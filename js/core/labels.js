@@ -68,7 +68,7 @@ export class Labels {
       cand.push(it);
     }
     cand.sort((a, b) => (b.hot - a.hot) || ((a.d.prio || 2) - (b.d.prio || 2)));
-    const chosen = cand.slice(0, mobile ? 5 : this.max);
+    const chosen = cand.slice(0, mobile ? 4 : this.max);
     const L = [], R = [];
     for (const it of chosen) {
       const side = it.d.side || (it.ax < cx ? 'l' : 'r');

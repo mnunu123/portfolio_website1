@@ -85,7 +85,7 @@ const ui = new UI(S, api);
 
 function computeSafe() {
   const W = window.innerWidth, H = window.innerHeight;
-  if (W <= 760 || app.classList.contains('hud-off')) {
+  if (W <= 1100 || app.classList.contains('hud-off')) {
     stage.setSafe({ left: 12, right: 12, top: 14, bottom: 14 });
     stage.resize();
     return;
