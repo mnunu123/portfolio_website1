@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>박세준 · 엔지니어링 전시관</title>
+  <meta name="description" content="직접 설계하고 만든 로봇을 3D로 돌려 보고, 단면으로 열어 보고, 작동 순서대로 움직여 보는 포트폴리오. DRAIN-X · 쓰리봇 · 면접훈련 로봇 · AQUA-SWAP.">
+  <meta name="theme-color" content="#eceef1">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="박세준 · 엔지니어링 전시관">
+  <meta property="og:description" content="직접 설계하고 만든 로봇 4점을 3D로 작동시켜 보는 포트폴리오">
+  <meta property="og:image" content="assets/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <div id="app" class="app is-loading">
+    <div class="stage" id="stage">
+      <canvas id="gl" aria-label="3D 작품 보기 영역. 드래그해서 돌리고, 부품을 눌러 선택합니다."></canvas>
+      <svg id="leaders" class="leaders" aria-hidden="true"></svg>
+      <div id="labels" class="labels" aria-hidden="true"></div>
+      <div id="flash" class="flash" aria-hidden="true"></div>
+    </div>
+
+    <header class="title-block" id="title-block">
+      <div class="tb-head">
+        <span class="tb-no" id="tb-no">EXHIBIT 01</span>
+        <button class="tb-about" id="open-about" type="button">만든 사람</button>
+      </div>
+      <h1 class="tb-title" id="tb-title">DRAIN-X</h1>
+      <p class="tb-sub" id="tb-sub"></p>
+      <div class="tb-read">
+        <span class="tb-big" id="tb-big">1</span>
+        <span class="tb-unit" id="tb-unit"></span>
+      </div>
+      <div class="tb-bar"><i id="tb-bar"></i><span class="tb-steps" id="tb-steps"></span></div>
+      <p class="tb-line" id="tb-line"></p>
+    </header>
+
+    <nav class="tabs" id="tabs" aria-label="전시 작품"></nav>
+    <div class="legend" id="legend" aria-label="색 범례"></div>
+
+    <aside class="col col-left" id="col-left" aria-label="작동 도표"></aside>
+    <aside class="col col-right" id="col-right" aria-label="부품과 시퀀스"></aside>
+
+    <div class="strip" id="strip" aria-label="부품 선택"></div>
+
+    <section class="transport" id="transport" aria-label="재생 제어">
+      <div class="tr-row">
+        <button class="btn btn-run" id="btn-run" type="button" aria-pressed="true"><i class="ico-pause"></i><span>정지</span></button>
+        <button class="btn" id="btn-prev" type="button" aria-label="이전 단계">◀ 단계</button>
+        <button class="btn" id="btn-next" type="button" aria-label="다음 단계">단계 ▶</button>
+      </div>
+      <label class="tr-slider"><span>속도</span><input id="in-speed" type="range" min="0" max="100" value="50"><output id="out-speed">1.0×</output></label>
+      <label class="tr-slider"><span>슬로모션</span><input id="in-slow" type="range" min="0" max="4" step="1" value="0"><output id="out-slow">1/1</output></label>
+      <label class="tr-slider tr-scrub"><span>사이클</span><input id="in-scrub" type="range" min="0" max="1000" value="0"><output id="out-scrub">0%</output></label>
+    </section>
+
+    <section class="viewbar" id="viewbar" aria-label="보기 설정">
+      <div class="vb-row"><span class="vb-k">CAMERA</span><div class="vb-group" id="vb-camera"></div></div>
+      <div class="vb-row"><span class="vb-k">CUTAWAY</span><div class="vb-group" id="vb-cut"></div></div>
+      <div class="vb-row"><span class="vb-k">OVERLAY</span><div class="vb-group" id="vb-overlay"></div></div>
+    </section>
+
+    <p class="hint" id="hint">부품을 눌러 선택 · 드래그로 회전 · 휠로 확대 · H 패널 숨기기</p>
+
+    <div class="loader" id="loader"><span>모델을 조립하는 중</span><i></i></div>
+  </div>
+
+  <dialog class="sheet" id="about" aria-labelledby="about-title">
+    <form method="dialog" class="sheet-x"><button aria-label="닫기">닫기 ×</button></form>
+    <div class="sheet-body" id="about-body"></div>
+  </dialog>
+
+  <dialog class="sheet sheet-wide" id="drawings" aria-labelledby="drawings-title">
+    <form method="dialog" class="sheet-x"><button aria-label="닫기">닫기 ×</button></form>
+    <div class="sheet-body" id="drawings-body"></div>
+  </dialog>
+
+  <noscript>
+    <div class="noscript">
+      <h1>박세준 · 엔지니어링 전시관</h1>
+      <p>이 페이지는 WebGL로 작품을 3D로 보여 줍니다. 자바스크립트를 켜 주세요.</p>
+      <ul>
+        <li>DRAIN-X — 2035 자율 빗물받이 준설 로봇 (제2회 ZYXCAD AX 경진대회 설계 부문)</li>
+        <li>쓰리봇 — 빗물받이 덮개 개폐 시제품 (딥테크 예비창업패키지)</li>
+        <li>면접훈련 로봇 — InMoov i2Head 얼굴 서보 구동 (한이음 ICT)</li>
+        <li>AQUA-SWAP — 액침냉각 데이터센터 서버 교체 로봇 (2026 3D 디자인 공모전)</li>
+      </ul>
+    </div>
+  </noscript>
+</body>
+</html>
