@@ -200,7 +200,7 @@ export async function create() {
       const [X, Y, Z] = shape(x, y, z);
       pa.setXYZ(i, X, Y, Z);
       const l = Math.min(1, lipW(x, y, z) * 1.2);
-      cols[i * 3] = 0.72 + (0.52 - 0.72) * l; cols[i * 3 + 1] = 0.57 + (0.29 - 0.57) * l; cols[i * 3 + 2] = 0.48 + (0.26 - 0.48) * l;   // 선형 색
+      cols[i * 3] = 0.6 + (0.42 - 0.6) * l; cols[i * 3 + 1] = 0.46 + (0.2 - 0.46) * l; cols[i * 3 + 2] = 0.38 + (0.18 - 0.38) * l;   // 선형 색
     }
     geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
     geo.computeVertexNormals();
@@ -213,7 +213,7 @@ export async function create() {
     const skinM = mat('skin', { vertexColors: true, color: 0xffffff, roughness: 0.58 });
     const upper = geo.clone(); upper.setIndex(up);
     add(gs, upper, skinM, { shell: true });
-    add(gs, new THREE.SphereGeometry(1, 20, 12).scale(17, 6, 12).translate(0, HY - 37, 68), Mx.black);   // 입 안
+    add(gs, new THREE.SphereGeometry(1, 24, 12).scale(30, 9, 14).translate(0, HY - 38, 63), Mx.black);   // 입 안
     for (const [g, sgn] of [[browL, -1], [browR, 1]]) {
       g.position.set(sgn * 26, HY + 33, 90); gs.add(g);
       add(g, new THREE.CapsuleGeometry(2.4, 20, 4, 8).rotateZ(Math.PI / 2 + sgn * 0.1), Mx.brow);
