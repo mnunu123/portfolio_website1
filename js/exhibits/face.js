@@ -113,91 +113,120 @@ export async function create() {
 
   /* ---------- 두상 ---------- */
   const head = new THREE.Group(); head.position.set(0, 40, 6); pitch.add(head);
-  const HY = 150;          // 머리 중심 높이 (head 로컬)
+  const HY = 150;                      // 얼굴 중심 높이 (head 로컬)
+  const RX = 76, RY = 108, RZ = 98;
+  const g2 = (x, y, cx, cy, sx, sy) => Math.exp(-(((x - cx) / sx) ** 2 + ((y - cy) / sy) ** 2));
+  // 단위 구 위의 방향 → 얼굴 표면 (턱 좁힘 + 눈두덩 · 코 · 광대 · 입 · 턱끝)
+  const shape = (x, y, z, rz = RZ) => {
+    let rx = RX, rzz = rz;
+    if (y < -0.15) { const k = -y - 0.15; rx *= 1 - 0.34 * k; rzz *= 1 - 0.1 * k; }
+    if (y > 0.35) rx *= 1 - 0.14 * (y - 0.35);
+    const f = Math.max(0, z), ax = Math.abs(x);
+    let dz = 0;
+    dz -= 9 * g2(ax, y, 0.35, 0.16, 0.12, 0.085) * f;
+    dz += 4 * g2(ax, y, 0.33, 0.30, 0.2, 0.05) * f;
+    dz += 22 * g2(x, y, 0, -0.05, 0.07, 0.16) * f ** 3;
+    dz += 6 * g2(x, y, 0, -0.17, 0.1, 0.04) * f ** 3;
+    dz += 4 * g2(ax, y, 0.5, -0.07, 0.14, 0.12) * f;
+    dz -= 3 * g2(x, y, 0, -0.335, 0.2, 0.02) * f;
+    dz += 2.5 * g2(x, y, 0, -0.30, 0.15, 0.03) * f;
+    dz += 2.5 * g2(x, y, 0, -0.375, 0.13, 0.03) * f;
+    dz += 5 * g2(x, y, 0, -0.62, 0.15, 0.08) * f;
+    return [x * rx, y * RY + HY, z * rzz + dz];
+  };
+  const lipW = (x, y, z) => Math.max(g2(x, y, 0, -0.30, 0.14, 0.028), g2(x, y, 0, -0.375, 0.12, 0.028)) * Math.max(0, z);
+  const inJaw = (x, y, z) => z > 0.12 && y < -0.335 - 0.55 * Math.max(0, Math.abs(x) - 0.24);
+  const JH = new THREE.Vector3(0, HY - 30, 12);   // 턱 힌지
   // 두상 프레임 (뒤통수, PLA)
   {
     const gs = grp('shell', head);
-    const skull = new THREE.SphereGeometry(1, 48, 32, 0, Math.PI * 2, 0, Math.PI);
-    const m = add(gs, skull, Mx.pla, { shell: true });
-    m.scale.set(80, 112, 96); m.position.set(0, HY + 6, -12);
-    add(gs, cyl(30, 60, 24).translate(0, 30, -6), Mx.pla);                                   // 목 받침
-    // 내부 얼굴 프레임 (투명 외피 모드에서 보임)
-    add(gs, boxSpan(-58, 58, HY - 70, HY + 70, 30, 38, 6), Mx.pla);
-    add(gs, boxSpan(-6, 6, HY - 80, HY + 60, -60, 30, 2), Mx.pla);
+    const back = new THREE.SphereGeometry(1, 56, 40, Math.PI, Math.PI, 0, Math.PI * 0.84);
+    const bp = back.attributes.position;
+    for (let i = 0; i < bp.count; i++) { const [X, Y, Z] = shape(bp.getX(i), bp.getY(i), bp.getZ(i), 94); bp.setXYZ(i, X, Y, Z); }
+    back.computeVertexNormals();
+    add(gs, back, Mx.pla, { shell: true });
+    add(gs, cyl(28, 70, 24).translate(0, 35, -4), Mx.pla);                                   // 목 받침
+    add(gs, boxSpan(-54, 54, HY - 66, HY + 66, 24, 32, 6), Mx.pla);                          // 내부 얼굴 프레임
+    add(gs, boxSpan(-5, 5, HY - 80, HY + 60, -60, 24, 2), Mx.pla);
     const ear = new THREE.SphereGeometry(1, 16, 12);
-    for (const s of [-1, 1]) { const e = add(gs, ear, Mx.pla); e.scale.set(10, 28, 18); e.position.set(s * 80, HY + 4, -6); }
+    for (const s of [-1, 1]) { const e = add(gs, ear, Mx.pla); e.scale.set(9, 26, 16); e.position.set(s * 74, HY + 2, -6); }
   }
-  // 얼굴 서보 15개 (구현 부위는 색으로 구분)
+  // 얼굴 서보 15개 (구현 부위는 파랑, 나머지는 회색)
   const servoSpots = [
-    ['eyes', -16, HY + 18, 10], ['eyes', 16, HY + 18, 10],
-    ['brows', -36, HY + 52, 18], ['brows', 36, HY + 52, 18],
-    ['jaw', 0, HY - 44, 8],
-    ['servos', -44, HY + 26, 14], ['servos', 44, HY + 26, 14], ['servos', -46, HY - 6, 16], ['servos', 46, HY - 6, 16],
-    ['servos', -30, HY - 32, 18], ['servos', 30, HY - 32, 18], ['servos', -22, HY + 70, 6], ['servos', 22, HY + 70, 6],
-    ['servos', -50, HY - 30, 0], ['servos', 50, HY - 30, 0],
+    ['eyes', -16, HY + 16, 4], ['eyes', 16, HY + 16, 4],
+    ['brows', -34, HY + 48, 8], ['brows', 34, HY + 48, 8],
+    ['jaw', 0, HY - 46, 0],
+    ['servos', -42, HY + 22, 6], ['servos', 42, HY + 22, 6], ['servos', -44, HY - 8, 8], ['servos', 44, HY - 8, 8],
+    ['servos', -28, HY - 32, 12], ['servos', 28, HY - 32, 12], ['servos', -20, HY + 68, 0], ['servos', 20, HY + 68, 0],
+    ['servos', -46, HY - 34, -8], ['servos', 46, HY - 34, -8],
   ];
   for (const [id, x, y, z] of servoSpots) {
     const g = grp(id === 'servos' ? 'servos' : id, head);
     add(g, boxSpan(x - 6, x + 6, y - 11, y + 11, z - 12, z + 12, 1.5), id === 'servos' ? Mx.servoN : Mx.servo);
     add(g, cyl(3, 4, 10).rotateX(Math.PI / 2).translate(x, y + 6, z + 14), Mx.pla);
   }
-  // 자석 28개 (피부 고정)
+  // 자석 28개 (피부 고정, 내부 프레임 앞면)
   {
     const gm = grp('skin', head);
     const mags = [];
-    let k = 0;
     for (let i = 0; i < 7; i++) for (let j = 0; j < 4; j++) {
-      const a = (-0.55 + (i / 6) * 1.1), y = HY - 60 + j * 40;
-      mags.push(cyl(4, 3, 10).rotateX(Math.PI / 2).translate(Math.sin(a) * 64, y, 40 + Math.cos(a) * 34));
-      k++;
+      const a = -0.6 + (i / 6) * 1.2, y = HY - 60 + j * 38;
+      mags.push(cyl(4, 3, 10).rotateX(Math.PI / 2).translate(Math.sin(a) * 52, y, 34 + Math.cos(a) * 26));
     }
     add(gm, merge(mags), Mx.magnet, { noEdges: true });
   }
   // 눈 (시선 2축)
   const eyes = [];
-  {
-    for (const s of [-1, 1]) {
-      const g = grp('eyes', head);
-      const e = new THREE.Group(); e.position.set(s * 29, HY + 22, 80); g.add(e);
-      add(e, new THREE.SphereGeometry(14, 24, 16), Mx.eyeW);
-      add(e, cyl(6.5, 2, 20).rotateX(Math.PI / 2).translate(0, 0, 13.4), Mx.iris);
-      add(e, cyl(3, 2.4, 16).rotateX(Math.PI / 2).translate(0, 0, 14.2), Mx.pupil);
-      add(g, cyl(1.2, 50, 6).rotateZ(Math.PI / 2).translate(s * 22, HY + 18, 52), Mx.steel);    // 링키지
-      eyes.push(e);
-    }
+  for (const s of [-1, 1]) {
+    const g = grp('eyes', head);
+    const e = new THREE.Group(); e.position.set(s * 26.5, HY + 17, 72); g.add(e);
+    add(e, new THREE.SphereGeometry(13, 24, 16), Mx.eyeW);
+    add(e, cyl(6, 2, 20).rotateX(Math.PI / 2).translate(0, 0, 12.4), Mx.iris);
+    add(e, cyl(2.8, 2.4, 16).rotateX(Math.PI / 2).translate(0, 0, 13.2), Mx.pupil);
+    add(g, cyl(1.2, 46, 6).rotateZ(Math.PI / 2).translate(s * 20, HY + 16, 40), Mx.steel);    // 링키지
+    eyes.push(e);
   }
-  // 피부 (실리콘): 이마 · 뺨 · 코 · 윗입술, 턱은 따로
+  // 피부 (실리콘): 하나의 표면을 얼굴과 턱으로 나눔
   const browL = new THREE.Group(), browR = new THREE.Group();
   const jaw = new THREE.Group();
   {
     const gs = grp('skin', head);
-    const face = new THREE.SphereGeometry(1, 48, 32, 0, Math.PI, 0, Math.PI * 0.62);
-    const f = add(gs, face, Mx.skin, { shell: true });
-    f.scale.set(76, 110, 100); f.position.set(0, HY + 8, -4);
-    // 눈구멍 대신 눈두덩
-    for (const s of [-1, 1]) {
-      const lid = add(gs, new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.45), Mx.skin, { shell: true });
-      lid.scale.set(19, 11, 15); lid.position.set(s * 29, HY + 29, 80); lid.rotation.x = -0.3;
+    const geo = new THREE.SphereGeometry(1, 84, 64, 0, Math.PI, 0, Math.PI * 0.84);
+    const pa = geo.attributes.position;
+    const unit = pa.array.slice();
+    const cols = new Float32Array(pa.count * 3);
+    for (let i = 0; i < pa.count; i++) {
+      const x = unit[i * 3], y = unit[i * 3 + 1], z = unit[i * 3 + 2];
+      const [X, Y, Z] = shape(x, y, z);
+      pa.setXYZ(i, X, Y, Z);
+      const l = Math.min(1, lipW(x, y, z) * 1.2);
+      cols[i * 3] = 0.72 + (0.52 - 0.72) * l; cols[i * 3 + 1] = 0.57 + (0.29 - 0.57) * l; cols[i * 3 + 2] = 0.48 + (0.26 - 0.48) * l;   // 선형 색
     }
-    const nose = add(gs, new THREE.SphereGeometry(1, 20, 14), Mx.skin, { shell: true });
-    nose.scale.set(11, 22, 14); nose.position.set(0, HY - 2, 94);
-    const lip = add(gs, new THREE.TorusGeometry(18, 3.2, 8, 24, Math.PI), Mx.lip);
-    lip.rotation.z = Math.PI; lip.position.set(0, HY - 31, 90);
-    for (const [g, s] of [[browL, -1], [browR, 1]]) {
-      g.position.set(s * 30, HY + 46, 84); gs.add(g);
-      add(g, new THREE.CapsuleGeometry(3.2, 26, 4, 8).rotateZ(Math.PI / 2 + s * 0.12), Mx.brow);
+    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    geo.computeVertexNormals();
+    const idx = geo.index.array, up = [], jw = [];
+    for (let i = 0; i < idx.length; i += 3) {
+      const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
+      const cx = (unit[a] + unit[b] + unit[c]) / 3, cy = (unit[a + 1] + unit[b + 1] + unit[c + 1]) / 3, cz = (unit[a + 2] + unit[b + 2] + unit[c + 2]) / 3;
+      (inJaw(cx, cy, cz) ? jw : up).push(idx[i], idx[i + 1], idx[i + 2]);
+    }
+    const skinM = mat('skin', { vertexColors: true, color: 0xffffff, roughness: 0.58 });
+    const upper = geo.clone(); upper.setIndex(up);
+    add(gs, upper, skinM, { shell: true });
+    add(gs, new THREE.SphereGeometry(1, 20, 12).scale(17, 6, 12).translate(0, HY - 37, 68), Mx.black);   // 입 안
+    for (const [g, sgn] of [[browL, -1], [browR, 1]]) {
+      g.position.set(sgn * 26, HY + 33, 90); gs.add(g);
+      add(g, new THREE.CapsuleGeometry(2.4, 20, 4, 8).rotateZ(Math.PI / 2 + sgn * 0.1), Mx.brow);
     }
     G.brows = G.brows || []; G.brows.push(browL, browR);
-    jaw.position.set(0, HY - 26, 30); head.add(jaw);
+    jaw.position.copy(JH); head.add(jaw);
     const gj = grp('jaw', jaw);
-    const chin = add(gj, new THREE.SphereGeometry(1, 40, 16, 0, Math.PI, Math.PI * 0.62, Math.PI * 0.24), Mx.skin, { shell: true });
-    chin.scale.set(76, 110, 100); chin.position.set(0, 34, -34);
-    const lo = add(gj, new THREE.TorusGeometry(16, 3, 8, 24, Math.PI), Mx.lip);
-    lo.position.set(0, -15, 59);
-    add(gj, boxSpan(-40, 40, -30, -24, -40, 40, 3), Mx.pla);                                 // 턱 프레임
+    const lower = geo.clone(); lower.setIndex(jw); lower.translate(-JH.x, -JH.y, -JH.z);
+    add(gj, lower, skinM, { shell: true });
+    add(gj, boxSpan(-34, 34, -34, -28, -24, 50, 3), Mx.pla);                                 // 턱 프레임
   }
-  // 브로 링크 (투명 모드에서 보임)
-  for (const s of [-1, 1]) add(grp('brows', head), cyl(1.2, 34, 6).translate(s * 34, HY + 36, 60), Mx.steel);
+  // 눈썹 링크 (투명 모드에서 보임)
+  for (const s of [-1, 1]) add(grp('brows', head), cyl(1.2, 30, 6).translate(s * 30, HY + 38, 50), Mx.steel);
 
   /* ---------- 효과 ---------- */
   const rings = ringPool(fx);
@@ -229,7 +258,7 @@ export async function create() {
       w.material.opacity = k === 1 && i % 3 === 0 ? sp * 0.32 * (1 - u) : 0;
       const r = 30 + u * 70;
       w.scale.set(r, r, r);
-      w.position.set(0, 74 + 150 + 40 + HY - 34, 112);
+      w.position.set(0, 74 + 150 + 40 + HY - 38, 104);
       w.rotation.set(0, 0, Math.PI * 0.2);
     });
     gazeLine.material.opacity = S.ov.arrows ? 0.6 : 0;
@@ -329,10 +358,10 @@ export async function create() {
   const inStep = (...ks) => (S) => ks.includes(S.d.step);
   const labels = [
     { text: '눈 · 시선', sub: '경청 중 응시 · 평가 중 시선 이동', part: 'eyes', prio: 1, anchor: at(eyes[1], 0, 0, 14), hot: inStep(2, 3) },
-    { text: '턱 · 발화 동기화', sub: 'TTS 음성에 맞춰 개폐', part: 'jaw', prio: 1, anchor: at(jaw, 0, -14, 70), hot: inStep(1) },
+    { text: '턱 · 발화 동기화', sub: 'TTS 음성에 맞춰 개폐', part: 'jaw', prio: 1, anchor: at(jaw, 0, -40, 76), hot: inStep(1) },
     { text: '눈썹 · 감정', sub: '질문 끝 올림 · thinking_pose', part: 'brows', prio: 1, anchor: at(browL, -12, 0, 2), hot: (S) => Math.abs(S.d.v?.br || 0) > 0.2 },
     { text: '목 2축', sub: '6221MG ×2 · nod_small', part: 'neck', prio: 1, anchor: () => root.localToWorld(tmp.set(0, 74 + 110, 30)).clone(), hot: inStep(2) },
-    { text: '실리콘 피부', sub: 'Ecoflex 00-10 · 자석 28개', part: 'skin', prio: 2, anchor: at(head, 62, HY + 40, 52), show: (S) => S.cut === 'solid' },
+    { text: '실리콘 피부', sub: 'Ecoflex 00-10 · 자석 28개', part: 'skin', prio: 2, anchor: at(head, 50, HY + 40, 66), show: (S) => S.cut === 'solid' },
     { text: '얼굴 서보 15', sub: 'JX PDI-1109MG · 90° 프리셋', part: 'servos', prio: 1, anchor: at(head, 46, HY - 6, 28), show: (S) => S.cut !== 'solid' },
     { text: 'Arduino Mega + PCA9685', sub: '16채널 PWM', part: 'board', prio: 1, anchor: () => root.localToWorld(tmp.set(-80, 80, -40)).clone() },
     { text: '전원 분리', sub: '서보 전원 / 보드 전원', part: 'power', prio: 2, anchor: () => root.localToWorld(tmp.set(110, 110, -55)).clone() },

@@ -304,7 +304,7 @@ export async function create() {
       const rows = [['질량 (kg)', 11.196, 3.714, 12], ['최소 안전계수', 161.9, 9.143, 170], ['최대 변위 (mm)', 0.016, 0.852, 1], ['최대 응력 (MPa)', 1.5, 26.25, 30]];
       const x0 = 92, x1 = w - 40;
       rows.forEach(([n, a, b, mx], i) => {
-        const y = 10 + i * 24;
+        const y = 4 + i * 21;
         txt(g, n, 2, y + 9, { size: 9, color: C.ink2, font: 'sans' });
         const wa = ((x1 - x0) * a) / mx, wb = ((x1 - x0) * b) / mx;
         g.fillStyle = 'rgba(40,48,60,0.18)'; g.fillRect(x0, y, Math.max(1.5, wa), 6);
