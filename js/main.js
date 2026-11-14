@@ -157,7 +157,7 @@ function frame(now) {
 }
 
 renderAbout($('#about-body'));
-window.__exhibit = { S, stage };
+window.__exhibit = { S, stage, labels };
 window.addEventListener('hashchange', () => openExhibit(location.hash.slice(1)));
 window.addEventListener('resize', () => computeSafe());
 stage.lowPower = window.innerWidth < 760 || (navigator.hardwareConcurrency || 8) <= 4;

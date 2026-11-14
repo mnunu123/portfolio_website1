@@ -280,6 +280,25 @@ export async function create({ api }) {
     seams.push(B(689, 691, -425, -424, 190, 1110), B(689, 691, 424, 425, 190, 560));
     for (let i = 0; i < 7; i++) seams.push(B(60 + i * 36, 84 + i * 36, -426, -424, 260, 420));
     add(g, merge(seams), Mx.dsteel, { noEdges: true });
+    // 측면 표기판 (차도 쪽 Zone C)
+    const decal = canvasTex(512, 256, (c, w, hh) => {
+      c.clearRect(0, 0, w, hh);
+      c.fillStyle = '#1b1f26'; c.font = '800 92px Pretendard, Arial, sans-serif'; c.textBaseline = 'alphabetic';
+      c.fillText('DRAIN-X', 24, 118);
+      c.fillStyle = '#d42a2f'; c.fillRect(26, 140, 300, 8);
+      c.fillStyle = '#4a515c'; c.font = '700 30px monospace'; c.fillText('DX-2035 · S01–S06', 26, 196);
+    });
+    const dm = new THREE.MeshBasicMaterial({ map: decal, transparent: true, depthWrite: false, toneMapped: false });
+    const plateM = new THREE.Mesh(new THREE.PlaneGeometry(260, 130), dm);
+    plateM.position.copy(P(185, 425.5, 820));
+    plateM.rotation.y = Math.PI;
+    plateM.userData.noManage = true; plateM.raycast = () => {};
+    g.add(plateM);
+    // 프레임 볼트
+    const bolts = [];
+    for (const sY of [-1, 1]) for (const X of [20, 350, 1030]) for (const Z of [190, 1110]) bolts.push(alongY(cyl(6, 4, 8)).translate(X, Z, -sY * 427));
+    for (const sY of [-1, 1]) for (const X of [1120, 1680]) for (const Z of [190, 910]) bolts.push(alongY(cyl(6, 4, 8)).translate(X, Z, -sY * 427));
+    add(g, merge(bolts), Mx.steel, { noEdges: true });
     // 트레이 (덮개를 내려놓는 자리)
     add(g, B(1110, 1690, -250, 250, 950, 970, 3), Mx.cover);
     add(g, B(1110, 1690, -250, -235, 970, 990, 2), Mx.cover);
